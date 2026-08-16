@@ -1,2 +1,30 @@
 extraConfig: |
   DEFAULT_TIMEZONE: "UTC"
+replicaCount: 1
+
+image:
+  repository: hjacobs/kube-downscaler
+  tag: "23.2.0"
+  pullPolicy: IfNotPresent
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+extraConfig: |
+  DEFAULT_TIMEZONE: "UTC"
+
+rbac:
+  create: true
+
+serviceAccount:
+  create: true
+  name: kube-downscaler
+
+service:
+  enabled: true
+  port: 80
