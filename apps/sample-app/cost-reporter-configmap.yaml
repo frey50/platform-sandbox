@@ -1,0 +1,77 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cost-reporter-script
+  namespace: sample-app
+  labels:
+    app.kubernetes.io/name: sample-app
+    app.kubernetes.io/part-of: platform-sandbox
+    app.kubernetes.io/component: cost-reporter
+data:
+  report.sh: |
+    #!/bin/sh
+    set -e
+
+    DEPLOYMENT="sample-app"
+    NAMESPACE="sample-app"
+    STATE_CM="cost-reporter-state"
+    COST_PER_HOUR="0.05"
+
+    echo "==> Cost Reporter starting at $(date)"
+
+    if ! kubectl get configmap "$STATE_CM" -n "$NAMESPACE" >/dev/null 2>&1; then
+      echo "==> Initializing cost reporter state..."
+      kubectl create configmap "$STATE_CM" -n "$NAMESPACE" \
+        --from-literal=downscaled_hours="0" \
+        --from-literal=running_hours="0" \
+        --from-literal=total_savings="0.00" \
+        --from-literal=last_report_date="" >/dev/null 2>&1 || true
+    fi
+
+    DOWN_HOURS=$(kubectl get configmap "$STATE_CM" -n "$NAMESPACE" -o jsonpath='{.data.downscaled_hours}' 2>/dev/null || echo "0")
+    RUN_HOURS=$(kubectl get configmap "$STATE_CM" -n "$NAMESPACE" -o jsonpath='{.data.running_hours}' 2>/dev/null || echo "0")
+    TOTAL_SAVINGS=$(kubectl get configmap "$STATE_CM" -n "$NAMESPACE" -o jsonpath='{.data.total_savings}' 2>/dev/null || echo "0.00")
+    LAST_REPORT=$(kubectl get configmap "$STATE_CM" -n "$NAMESPACE" -o jsonpath='{.data.last_report_date}' 2>/dev/null || echo "")
+
+    CURRENT_REPLICAS=$(kubectl get deployment "$DEPLOYMENT" -n "$NAMESPACE" -o jsonpath='{.spec.replicas}' 2>/dev/null || echo "0")
+
+    if [ "$CURRENT_REPLICAS" = "0" ]; then
+      DOWN_HOURS=$((DOWN_HOURS + 1))
+      echo "Status: DOWNSCALED (hour counted)"
+    else
+      RUN_HOURS=$((RUN_HOURS + 1))
+      echo "Status: RUNNING (hour counted)"
+    fi
+
+    DAILY_SAVINGS=$(awk "BEGIN {printf \"%.2f\", $DOWN_HOURS * $COST_PER_HOUR}")
+    TODAY=$(date +%Y-%m-%d)
+    HOUR=$(date +%H)
+
+    if [ "$HOUR" = "09" ] && [ "$LAST_REPORT" != "$TODAY" ]; then
+      echo ""
+      echo "========================================"
+      echo "     PLATFORM SANDBOX COST REPORT"
+      echo "========================================"
+      echo "Date: $TODAY"
+      echo "Deployment: $DEPLOYMENT"
+      echo ""
+      echo "Last 24 Hours:"
+      echo "  Downscaled:   ${DOWN_HOURS} hours"
+      echo "  Running:      ${RUN_HOURS} hours"
+      echo "  Daily Savings: $${DAILY_SAVINGS}"
+      echo ""
+      echo "Lifetime:"
+      echo "  Total Savings: $${TOTAL_SAVINGS}"
+      echo "========================================"
+      echo ""
+
+      TOTAL_SAVINGS=$(awk "BEGIN {printf \"%.2f\", $TOTAL_SAVINGS + $DAILY_SAVINGS}")
+      DOWN_HOURS=0
+      RUN_HOURS=0
+      LAST_REPORT="$TODAY"
+    fi
+
+    kubectl patch configmap "$STATE_CM" -n "$NAMESPACE" --type merge \
+      -p "{\"data\":{\"downscaled_hours\":\"$DOWN_HOURS\",\"running_hours\":\"$RUN_HOURS\",\"total_savings\":\"$TOTAL_SAVINGS\",\"last_report_date\":\"$LAST_REPORT\"}}" >/dev/null 2>&1
+
+    echo "==> Cost Reporter finished at $(date)"

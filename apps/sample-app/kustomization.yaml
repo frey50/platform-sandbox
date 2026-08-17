@@ -17,3 +17,6 @@ resources:
   - servicemonitor.yaml
   - resourcequota.yaml
   - limitrange.yaml
+  - cost-reporter-rbac.yaml
+  - cost-reporter-configmap.yaml
+  - cost-reporter-cronjob.yaml

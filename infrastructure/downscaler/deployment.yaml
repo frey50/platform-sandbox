@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kube-downscaler
+  namespace: kube-downscaler
+  labels:
+    app.kubernetes.io/name: kube-downscaler
+    app.kubernetes.io/part-of: platform-sandbox
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kube-downscaler
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kube-downscaler
+        app.kubernetes.io/part-of: platform-sandbox
+    spec:
+      serviceAccountName: kube-downscaler
+      automountServiceAccountToken: true
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: downscaler
+          image: hjacobs/kube-downscaler:23.2.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - --interval=60
+            - --default-downtime=Mon-Fri 19:00-08:00 UTC,Sat-Sun 00:00-24:00 UTC
+            - --exclude-namespaces=kube-system,argocd,observability,kube-downscaler
+            - --exclude-deployments=kube-downscaler
+            - --dry-run=false
+          env:
+            - name: DEFAULT_TIMEZONE
+              value: "UTC"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
