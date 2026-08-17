@@ -1,11 +1,17 @@
-extraConfig: |
-  DEFAULT_TIMEZONE: "UTC"
+# Helm values for kube-downscaler
+# This manages the automatic scaling of workloads to save costs.
+
 replicaCount: 1
 
 image:
   repository: hjacobs/kube-downscaler
   tag: "23.2.0"
   pullPolicy: IfNotPresent
+
+# Merged Configuration
+extraConfig:
+  DEFAULT_TIMEZONE: "UTC"
+  # You can add more ENV vars here later (e.g., DRY_RUN: "true")
 
 resources:
   requests:
@@ -14,9 +20,6 @@ resources:
   limits:
     cpu: 200m
     memory: 256Mi
-
-extraConfig: |
-  DEFAULT_TIMEZONE: "UTC"
 
 rbac:
   create: true
