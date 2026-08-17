@@ -1,15 +1,7 @@
 package main
 
-import (
-	"fmt"
-	"os"
-
-	"github.com/frey50/platform-sandbox/cmd/platformctl/cmd"
-)
+import "fmt"
 
 func main() {
-	if err := cmd.Execute(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
+    fmt.Println("platformctl: Platform Sandbox CLI - Coming Soon")
 }
