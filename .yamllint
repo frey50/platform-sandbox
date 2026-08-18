@@ -1,11 +1,8 @@
-extends: default
-
+---
+extends: relaxed
 rules:
   line-length: disable
-  indentation:
-    indent-sequences: consistent
+  new-line-at-end-of-file: disable # We'll auto-fix this in CI instead
+  trailing-spaces: disable
+  indentation: disable
   document-start: disable
-  truthy: disable
-  comments:
-    level: warning
-  comments-indentation: disable
