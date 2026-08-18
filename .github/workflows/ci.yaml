@@ -79,7 +79,7 @@ jobs:
       - name: Install Argo CD
         run: |
           kubectl create namespace argocd
-          kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+          kubectl apply -n argocd --server-side --force-conflicts -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
           kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=300s
 
       - name: Apply manifests from THIS commit
