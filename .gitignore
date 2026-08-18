@@ -1,0 +1,13 @@
+# Compiled binaries — ship these via GitHub Releases, not git
+bin/
+dist/
+*.exe
+
+# Go
+*.test
+*.out
+
+# OS / editor noise
+.DS_Store
+.idea/
+.vscode/

@@ -8,6 +8,8 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -16,17 +18,18 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          # cmd/platformctl is its own Go module — build from inside it.
+          # (Building ./cmd/platformctl/main.go from the repo root breaks
+          #  because the nested module is invisible to the root module.)
+          go-version-file: cmd/platformctl/go.mod
 
-      - name: Build Binaries
+      - name: Build binaries
+        working-directory: cmd/platformctl
         run: |
-          mkdir -p dist
-          # Build for Linux
-          GOOS=linux GOARCH=amd64 go build -o dist/platformctl-linux-amd64 ./cmd/platformctl/main.go
-          # Build for macOS
-          GOOS=darwin GOARCH=arm64 go build -o dist/platformctl-darwin-arm64 ./cmd/platformctl/main.go
-          # Build for Windows
-          GOOS=windows GOARCH=amd64 go build -o dist/platformctl-windows-amd64.exe ./cmd/platformctl/main.go
+          mkdir -p ../../dist
+          GOOS=linux   GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o ../../dist/platformctl-linux-amd64 .
+          GOOS=darwin  GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o ../../dist/platformctl-darwin-arm64 .
+          GOOS=windows GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o ../../dist/platformctl-windows-amd64.exe .
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -35,5 +38,3 @@ jobs:
             dist/platformctl-linux-amd64
             dist/platformctl-darwin-arm64
             dist/platformctl-windows-amd64.exe
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
