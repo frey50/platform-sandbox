@@ -107,3 +107,19 @@ jobs:
           kubectl apply -n argocd -f apps/sample-app/sample-app-application.yaml
           sleep 15
           kubectl -n argocd get application sample-app
+
+      - name: Debug workloads on failure
+        if: failure()
+        run: |
+          echo "=== sample-app pods ==="
+          kubectl -n sample-app get pods -o wide
+          echo "=== sample-app describe ==="
+          kubectl -n sample-app describe pods -l app.kubernetes.io/name=sample-app
+          echo "=== sample-app logs ==="
+          kubectl -n sample-app logs -l app.kubernetes.io/name=sample-app --all-containers --tail=100 || true
+          echo "=== kube-downscaler pods ==="
+          kubectl -n kube-downscaler get pods -o wide
+          echo "=== kube-downscaler describe ==="
+          kubectl -n kube-downscaler describe pods -l app.kubernetes.io/name=kube-downscaler
+          echo "=== kube-downscaler logs ==="
+          kubectl -n kube-downscaler logs -l app.kubernetes.io/name=kube-downscaler --all-containers --tail=100 || true
