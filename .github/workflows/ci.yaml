@@ -88,6 +88,10 @@ jobs:
         #  runner filesystem, so we apply directly here.)
         run: |
           kubectl apply -k apps/sample-app
+
+          kubectl apply -f infrastructure/downscaler/namespace.yaml
+          kubectl wait --for=jsonpath='{.status.phase}'=Active namespace/kube-downscaler --timeout=30s
+
           kubectl apply -f infrastructure/downscaler/
 
       - name: Verify workloads come up
