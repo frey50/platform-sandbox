@@ -8,6 +8,7 @@ resources:
   - serviceaccount.yaml
   - rbac.yaml
   - configmap.yaml
+  - nginx-conf-configmap.yaml
   - deployment.yaml
   - service.yaml
   - hpa.yaml

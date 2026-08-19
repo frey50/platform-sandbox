@@ -33,7 +33,7 @@ spec:
             - --default-downtime=Mon-Fri 19:00-08:00 UTC,Sat-Sun 00:00-24:00 UTC
             - --exclude-namespaces=kube-system,argocd,observability,kube-downscaler
             - --exclude-deployments=kube-downscaler
-            - --dry-run=false
+            
           env:
             - name: DEFAULT_TIMEZONE
               value: "UTC"

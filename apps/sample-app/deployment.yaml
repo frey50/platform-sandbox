@@ -44,7 +44,7 @@ spec:
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
-              containerPort: 80
+              containerPort: 8080
               protocol: TCP
           env:
             - name: APP_NAME
@@ -75,8 +75,6 @@ spec:
             capabilities:
               drop:
                 - ALL
-              add:
-                - NET_BIND_SERVICE
           livenessProbe:
             httpGet:
               path: /
@@ -111,6 +109,9 @@ spec:
               mountPath: /var/cache/nginx
             - name: run
               mountPath: /var/run
+            - name: nginx-conf
+              mountPath: /etc/nginx/conf.d/hello.conf
+              subPath: hello.conf
       volumes:
         - name: tmp
           emptyDir: {}
@@ -118,6 +119,9 @@ spec:
           emptyDir: {}
         - name: run
           emptyDir: {}
+        - name: nginx-conf
+          configMap:
+            name: sample-app-nginx-conf
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: topology.kubernetes.io/zone
