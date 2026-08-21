@@ -147,6 +147,7 @@ jobs:
             --namespace observability --create-namespace \
             --version 56.0.0 \
             --skip-crds \
+            --burst-limit 300 \
             --values infrastructure/observability/kube-prometheus-stack-values.yaml \
             --timeout 10m \
             --wait
