@@ -134,10 +134,14 @@ jobs:
 
       - name: Install Prometheus CRDs
         run: |
-          kubectl apply --server-side --force-conflicts -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/main/example/prometheus-operator-crd/monitoring.coreos.com_servicemonitors.yaml
-          kubectl apply --server-side --force-conflicts -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/main/example/prometheus-operator-crd/monitoring.coreos.com_podmonitors.yaml
-          kubectl apply --server-side --force-conflicts -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/main/example/prometheus-operator-crd/monitoring.coreos.com_prometheuses.yaml
-          kubectl apply --server-side --force-conflicts -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/main/example/prometheus-operator-crd/monitoring.coreos.com_prometheusrules.yaml
+          kubectl apply --server-side --force-conflicts \
+            -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/main/example/prometheus-operator-crd/monitoring.coreos.com_servicemonitors.yaml
+          kubectl apply --server-side --force-conflicts \
+            -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/main/example/prometheus-operator-crd/monitoring.coreos.com_podmonitors.yaml
+          kubectl apply --server-side --force-conflicts \
+            -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/main/example/prometheus-operator-crd/monitoring.coreos.com_prometheuses.yaml
+          kubectl apply --server-side --force-conflicts \
+            -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/main/example/prometheus-operator-crd/monitoring.coreos.com_prometheusrules.yaml
 
       - name: Install kube-prometheus-stack
         run: |
@@ -147,10 +151,10 @@ jobs:
             --namespace observability --create-namespace \
             --version 56.0.0 \
             --skip-crds \
-            --burst-limit 300 \
-            --values infrastructure/observability/kube-prometheus-stack-values.yaml \
-            --timeout 10m \
-            --wait
+            --timeout 20m \
+            --wait \
+            --wait-for-jobs \
+            --values infrastructure/observability/kube-prometheus-stack-values.yaml
 
       - name: Apply observability plain manifests
         run: |
@@ -180,8 +184,12 @@ jobs:
         run: |
           echo "=== All pods ==="
           kubectl get pods -A
-          echo "=== Observability describe ==="
-          kubectl -n observability describe pods
+          echo "=== Pending pods (resource pressure?) ==="
+          kubectl get pods -A --field-selector=status.phase=Pending
+          echo "=== Observability events ==="
+          kubectl -n observability get events --sort-by='.lastTimestamp' | tail -30
+          echo "=== Node resources ==="
+          kubectl describe node | grep -A 5 "Allocated resources"
           echo "=== Grafana logs ==="
           kubectl -n observability logs -l app.kubernetes.io/name=grafana --tail=100 || true
           echo "=== Prometheus logs ==="
