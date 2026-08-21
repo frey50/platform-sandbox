@@ -56,9 +56,13 @@ func runUp(cmd *cobra.Command, args []string) error {
 	fmt.Println()
 
 	// Step 2: Install Argo CD
+	// NOTE: --server-side --force-conflicts is required here. The Argo CD
+	// install manifest's applicationsets.argoproj.io CRD is too large for
+	// regular client-side apply — it overflows the 262144-byte limit on the
+	// kubectl.kubernetes.io/last-applied-configuration annotation.
 	color.Yellow("[2/5] Installing Argo CD...")
 	exec.Command("kubectl", "create", "namespace", "argocd").Run()
-	c = exec.Command("kubectl", "apply", "-n", "argocd", "-f",
+	c = exec.Command("kubectl", "apply", "-n", "argocd", "--server-side", "--force-conflicts", "-f",
 		"https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml")
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
@@ -69,7 +73,21 @@ func runUp(cmd *cobra.Command, args []string) error {
 	fmt.Println()
 
 	// Step 3: Install downscaler
+	// NOTE: the namespace is applied first and waited on before the rest of
+	// the manifests. Applying everything in one shot can race the API
+	// server's admission-control cache, which sometimes hasn't caught up
+	// with the just-created namespace yet, causing a spurious "not found".
 	color.Yellow("[3/5] Installing kube-downscaler...")
+	c = exec.Command("kubectl", "apply", "-f", "infrastructure/downscaler/namespace.yaml")
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	if err := c.Run(); err != nil {
+		color.Yellow("Downscaler namespace apply failed (may already exist): %v", err)
+	}
+
+	exec.Command("kubectl", "wait", "--for=jsonpath={.status.phase}=Active",
+		"namespace/kube-downscaler", "--timeout=30s").Run()
+
 	c = exec.Command("kubectl", "apply", "-f", "infrastructure/downscaler/")
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
@@ -80,7 +98,7 @@ func runUp(cmd *cobra.Command, args []string) error {
 
 	// Step 4: Deploy app
 	color.Yellow("[4/5] Deploying sample application...")
-	c = exec.Command("kubectl", "apply", "-f", "apps/sample-app-application.yaml", "-n", "argocd")
+	c = exec.Command("kubectl", "apply", "-f", "apps/sample-app/sample-app-application.yaml", "-n", "argocd")
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
 	if err := c.Run(); err != nil {
