@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: downscaler-schedule
+  namespace: kube-downscaler
+  labels:
+    app.kubernetes.io/name: kube-downscaler
+    app.kubernetes.io/part-of: platform-sandbox
+data:
+  # Single source of truth for the downscaler's default schedule.
+  # Consumed directly by infrastructure/downscaler/deployment.yaml via
+  # $(DOWNSCALER_SCHEDULE) substitution in --default-downtime.
+  #
+  # Format: <days>-<days> <HH:MM>-<HH:MM> <TZ>[,<days>-<days> <HH:MM>-<HH:MM> <TZ>...]
+  # Weeknights: scale to 0 from 19:00 to 08:00 UTC.
+  # Weekends: scale to 0 all day.
+  default-downtime: "Mon-Fri 19:00-08:00 UTC,Sat-Sun 00:00-24:00 UTC"
+  timezone: "UTC"

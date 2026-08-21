@@ -30,13 +30,20 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - --interval=60
-            - --default-downtime=Mon-Fri 19:00-08:00 UTC,Sat-Sun 00:00-24:00 UTC
+            - --default-downtime=$(DOWNSCALER_SCHEDULE)
             - --exclude-namespaces=kube-system,argocd,observability,kube-downscaler
             - --exclude-deployments=kube-downscaler
-            
           env:
             - name: DEFAULT_TIMEZONE
-              value: "UTC"
+              valueFrom:
+                configMapKeyRef:
+                  name: downscaler-schedule
+                  key: timezone
+            - name: DOWNSCALER_SCHEDULE
+              valueFrom:
+                configMapKeyRef:
+                  name: downscaler-schedule
+                  key: default-downtime
           resources:
             requests:
               cpu: 50m
