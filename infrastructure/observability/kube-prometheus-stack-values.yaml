@@ -1,0 +1,242 @@
+# ------------------------------------------------------------------------------
+# kube-prometheus-stack Helm values
+# Production-grade observability for the platform-sandbox kind cluster.
+# Chart: https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack
+# ------------------------------------------------------------------------------
+
+nameOverride: "platform"
+fullnameOverride: "platform"
+
+# -----------------------------------------------------------------------------
+# Prometheus Operator
+# -----------------------------------------------------------------------------
+prometheusOperator:
+  enabled: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  admissionWebhooks:
+    enabled: false  # Skip cert-manager dependency for kind demos
+  tls:
+    enabled: false
+
+# -----------------------------------------------------------------------------
+# Prometheus
+# -----------------------------------------------------------------------------
+prometheus:
+  prometheusSpec:
+    retention: 7d
+    retentionSize: "2GB"
+    enableAdminAPI: false
+    walCompression: true
+    scrapeInterval: 30s
+    evaluationInterval: 30s
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    storageSpec:
+      emptyDir:
+        medium: Memory
+        sizeLimit: 512Mi
+    # Scrape Argo CD metrics (port 8082 on argocd-metrics service)
+    additionalScrapeConfigs:
+      - job_name: argocd-metrics
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names:
+                - argocd
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_name]
+            action: keep
+            regex: argocd-metrics
+          - source_labels: [__meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: metrics
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+      - job_name: argocd-server-metrics
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names:
+                - argocd
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_name]
+            action: keep
+            regex: argocd-server-metrics
+          - source_labels: [__meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: metrics
+      - job_name: kube-downscaler
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - kube-downscaler
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+            action: keep
+            regex: kube-downscaler
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: "true"
+          - source_labels: [__address__]
+            target_label: __tmp_address
+          - source_labels: [__tmp_address]
+            regex: ([^:]+):\d+
+            target_label: __address__
+            replacement: $1:80
+    # Enable ServiceMonitor selection across all namespaces
+    serviceMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorNamespaceSelector: {}
+    podMonitorSelectorNilUsesHelmValues: false
+    podMonitorNamespaceSelector: {}
+    ruleSelectorNilUsesHelmValues: false
+    ruleNamespaceSelector: {}
+
+# -----------------------------------------------------------------------------
+# Grafana
+# -----------------------------------------------------------------------------
+grafana:
+  enabled: true
+  adminPassword: admin
+  defaultDashboardsEnabled: true
+  defaultDashboardsTimezone: utc
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  # Auto-load dashboards from ConfigMaps with label grafana_dashboard
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: platform-sandbox
+          orgId: 1
+          folder: Platform Sandbox
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/platform-sandbox
+  dashboards:
+    platform-sandbox:
+      platform-sandbox-overview:
+        url: ""
+        # This is populated by the sidecar from ConfigMaps
+  # Auto-load datasources from ConfigMaps with label grafana_datasource
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          access: proxy
+          url: http://platform-prometheus:9090
+          isDefault: true
+          editable: false
+          jsonData:
+            timeInterval: "30s"
+        - name: Loki
+          type: loki
+          access: proxy
+          url: http://loki:3100
+          editable: false
+          jsonData:
+            maxLines: 1000
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      folderAnnotation: grafana_folder
+      provider:
+        name: platform-sandbox
+        foldersFromFilesStructure: true
+    datasources:
+      enabled: true
+      label: grafana_datasource
+  # Persistence not needed for kind demos
+  persistence:
+    enabled: false
+
+# -----------------------------------------------------------------------------
+# kube-state-metrics
+# -----------------------------------------------------------------------------
+kubeStateMetrics:
+  enabled: true
+kube-state-metrics:
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+# -----------------------------------------------------------------------------
+# prometheus-node-exporter
+# -----------------------------------------------------------------------------
+nodeExporter:
+  enabled: true
+prometheus-node-exporter:
+  resources:
+    requests:
+      cpu: 20m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+
+# -----------------------------------------------------------------------------
+# Alertmanager (minimal for demo)
+# -----------------------------------------------------------------------------
+alertmanager:
+  enabled: false
+
+# -----------------------------------------------------------------------------
+# Additional PrometheusRules
+# -----------------------------------------------------------------------------
+defaultRules:
+  create: true
+  rules:
+    alertmanager: false
+    etcd: false
+    configReloaders: false
+    general: true
+    k8s: true
+    kubeApiserverAvailability: false
+    kubeApiserverBurnrate: false
+    kubeApiserverHistogram: false
+    kubeApiserverSlos: false
+    kubeControllerManager: false
+    kubelet: true
+    kubeProxy: false
+    kubePrometheusGeneral: true
+    kubePrometheusNodeRecording: true
+    kubernetesApps: true
+    kubernetesResources: true
+    kubernetesStorage: true
+    kubernetesSystem: false
+    kubeSchedulerAlerting: false
+    kubeSchedulerRecording: false
+    kubeStateMetrics: true
+    network: true
+    node: true
+    nodeExporterAlerting: false
+    nodeExporterRecording: true
+    prometheus: true
+    prometheusOperator: true

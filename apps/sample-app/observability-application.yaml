@@ -1,0 +1,53 @@
+# ------------------------------------------------------------------------------
+# Argo CD Application: observability stack
+# Installs kube-prometheus-stack via Helm + plain manifests for Loki/Promtail.
+# ------------------------------------------------------------------------------
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: observability
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: observability
+    app.kubernetes.io/part-of: platform-sandbox
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  # Multi-source: Helm chart + local manifests
+  sources:
+    # Source 1: kube-prometheus-stack Helm chart
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: kube-prometheus-stack
+      targetRevision: "56.0.0"
+      helm:
+        releaseName: platform
+        valueFiles:
+          - $values/infrastructure/observability/kube-prometheus-stack-values.yaml
+    # Source 2: Local plain manifests (Loki, Promtail, dashboards)
+    - repoURL: https://github.com/frey50/platform-sandbox
+      targetRevision: main
+      ref: values
+      path: infrastructure/observability
+      kustomize:
+        commonLabels:
+          app.kubernetes.io/managed-by: argocd
