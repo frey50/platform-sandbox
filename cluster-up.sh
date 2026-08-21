@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CLUSTER_NAME="platform-sandbox"
+CLUSTER_NAME="${CLUSTER_NAME:-platform-sandbox}"
 
 echo "==> Checking prerequisites..."
 command -v kind >/dev/null 2>&1 || { echo "ERROR: kind is not installed. Install it: https://kind.sigs.k8s.io/docs/user/quick-start/#installation"; exit 1; }
