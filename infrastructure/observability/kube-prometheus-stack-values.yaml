@@ -135,10 +135,10 @@ grafana:
           editable: true
           options:
             path: /var/lib/grafana/dashboards/platform-sandbox
-  dashboards:
-    platform-sandbox:
-      platform-sandbox-overview:
-        url: ""
+  dashboards: {}
+
+  initChownData:
+    enabled: false
         # This is populated by the sidecar from ConfigMaps
   # Auto-load datasources from ConfigMaps with label grafana_datasource
   datasources:

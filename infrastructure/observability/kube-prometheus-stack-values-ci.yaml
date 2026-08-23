@@ -61,31 +61,24 @@ prometheus:
 grafana:
   enabled: true
   adminPassword: admin
-  defaultDashboardsEnabled: false   # Skip the 20+ default dashboards — we load our own
+  defaultDashboardsEnabled: false
   defaultDashboardsTimezone: utc
   resources:
     requests:
-      cpu: 20m
-      memory: 64Mi
-    limits:
-      cpu: 100m
+      cpu: 50m
       memory: 128Mi
-  dashboardProviders:
-    dashboardproviders.yaml:
-      apiVersion: 1
-      providers:
-        - name: platform-sandbox
-          orgId: 1
-          folder: Platform Sandbox
-          type: file
-          disableDeletion: false
-          editable: true
-          options:
-            path: /var/lib/grafana/dashboards/platform-sandbox
-  dashboards:
-    platform-sandbox:
-      platform-sandbox-overview:
-        url: ""
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+  # Disable sidecars — mount dashboards directly
+  sidecar:
+    dashboards:
+      enabled: false
+    datasources:
+      enabled: false
+
+  # Provision datasources directly
   datasources:
     datasources.yaml:
       apiVersion: 1
@@ -105,17 +98,36 @@ grafana:
           editable: false
           jsonData:
             maxLines: 1000
-  sidecar:
-    dashboards:
-      enabled: true
-      label: grafana_dashboard
-      folderAnnotation: grafana_folder
-      provider:
-        name: platform-sandbox
-        foldersFromFilesStructure: true
-    datasources:
-      enabled: true
-      label: grafana_datasource
+
+  # Mount our custom dashboard from the ConfigMap
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: platform-sandbox
+          orgId: 1
+          folder: Platform Sandbox
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/platform-sandbox
+
+  # Extra volume mount for the dashboard
+  extraVolumeMounts:
+    - name: platform-sandbox-dashboards
+      mountPath: /var/lib/grafana/dashboards/platform-sandbox
+      readOnly: true
+
+  extraVolumes:
+    - name: platform-sandbox-dashboards
+      configMap:
+        name: platform-sandbox-dashboards
+
+  # Disable init container that chowns data (not needed without persistence)
+  initChownData:
+    enabled: false
+
   persistence:
     enabled: false
 
