@@ -4,5 +4,5 @@ metadata:
   name: observability
   labels:
     app.kubernetes.io/part-of: platform-sandbox
-    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce: baseline
     pod-security.kubernetes.io/enforce-version: latest
