@@ -30,10 +30,10 @@ prometheusOperator:
 # -----------------------------------------------------------------------------
 prometheus:
   prometheusSpec:
-    retention: 2d
-    retentionSize: "512MB"
+    retention: 1d
+    retentionSize: "256MB"
     enableAdminAPI: false
-    walCompression: true
+    walCompression: false
     scrapeInterval: 30s
     evaluationInterval: 30s
     resources:
@@ -47,6 +47,7 @@ prometheus:
       emptyDir:
         medium: Memory
         sizeLimit: 256Mi
+    # No additional scrape configs in CI — we just need the stack to start
     serviceMonitorSelectorNilUsesHelmValues: false
     serviceMonitorNamespaceSelector: {}
     podMonitorSelectorNilUsesHelmValues: false
