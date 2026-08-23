@@ -1,6 +1,6 @@
 # ------------------------------------------------------------------------------
 # kube-prometheus-stack Helm values
-# Production-grade observability for the platform-sandbox kind cluster.
+# Tuned for fast CI installs on a kind cluster (platform-sandbox).
 # Chart: https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack
 # ------------------------------------------------------------------------------
 
@@ -111,8 +111,10 @@ prometheus:
 grafana:
   enabled: true
   adminPassword: admin
-  defaultDashboardsEnabled: true
-  defaultDashboardsTimezone: utc
+  # CI only checks for the custom platform-sandbox-overview dashboard, not the
+  # stock chart dashboards -- skip loading ~15-20 unused default dashboards to
+  # save real install time.
+  defaultDashboardsEnabled: false
   resources:
     requests:
       cpu: 50m
@@ -191,7 +193,7 @@ kube-state-metrics:
 # prometheus-node-exporter
 # -----------------------------------------------------------------------------
 nodeExporter:
-  enabled: true
+  enabled: false
 prometheus-node-exporter:
   resources:
     requests:
@@ -202,13 +204,16 @@ prometheus-node-exporter:
       memory: 64Mi
 
 # -----------------------------------------------------------------------------
-# Alertmanager (minimal for demo)
+# Alertmanager (disabled for CI -- not tested)
 # -----------------------------------------------------------------------------
 alertmanager:
   enabled: false
 
 # -----------------------------------------------------------------------------
 # Additional PrometheusRules
+# CI never asserts on alerting/recording rules, so trimmed to the bare
+# minimum. Set defaultRules.create: false entirely if you decide you don't
+# need any of this for the sandbox at all.
 # -----------------------------------------------------------------------------
 defaultRules:
   create: true
@@ -216,27 +221,27 @@ defaultRules:
     alertmanager: false
     etcd: false
     configReloaders: false
-    general: true
-    k8s: true
+    general: false
+    k8s: false
     kubeApiserverAvailability: false
     kubeApiserverBurnrate: false
     kubeApiserverHistogram: false
     kubeApiserverSlos: false
     kubeControllerManager: false
-    kubelet: true
+    kubelet: false
     kubeProxy: false
-    kubePrometheusGeneral: true
-    kubePrometheusNodeRecording: true
-    kubernetesApps: true
-    kubernetesResources: true
-    kubernetesStorage: true
+    kubePrometheusGeneral: false
+    kubePrometheusNodeRecording: false
+    kubernetesApps: false
+    kubernetesResources: false
+    kubernetesStorage: false
     kubernetesSystem: false
     kubeSchedulerAlerting: false
     kubeSchedulerRecording: false
-    kubeStateMetrics: true
-    network: true
-    node: true
+    kubeStateMetrics: false
+    network: false
+    node: false
     nodeExporterAlerting: false
-    nodeExporterRecording: true
-    prometheus: true
-    prometheusOperator: true
+    nodeExporterRecording: false
+    prometheus: false
+    prometheusOperator: false
