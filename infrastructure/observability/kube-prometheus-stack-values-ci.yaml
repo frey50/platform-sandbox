@@ -1,0 +1,147 @@
+# ------------------------------------------------------------------------------
+# CI-specific lightweight values for kube-prometheus-stack
+# Strips heavy components so the observability-test job finishes in ~3-5 min
+# instead of 15-20 min (or timing out entirely).
+# ------------------------------------------------------------------------------
+
+# Use the same base settings
+nameOverride: "platform"
+fullnameOverride: "platform"
+
+# -----------------------------------------------------------------------------
+# Prometheus Operator
+# -----------------------------------------------------------------------------
+prometheusOperator:
+  enabled: true
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+  admissionWebhooks:
+    enabled: false
+  tls:
+    enabled: false
+
+# -----------------------------------------------------------------------------
+# Prometheus (lightweight)
+# -----------------------------------------------------------------------------
+prometheus:
+  prometheusSpec:
+    retention: 2d
+    retentionSize: "512MB"
+    enableAdminAPI: false
+    walCompression: true
+    scrapeInterval: 30s
+    evaluationInterval: 30s
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+    storageSpec:
+      emptyDir:
+        medium: Memory
+        sizeLimit: 256Mi
+    serviceMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorNamespaceSelector: {}
+    podMonitorSelectorNilUsesHelmValues: false
+    podMonitorNamespaceSelector: {}
+    ruleSelectorNilUsesHelmValues: false
+    ruleNamespaceSelector: {}
+
+# -----------------------------------------------------------------------------
+# Grafana (lightweight)
+# -----------------------------------------------------------------------------
+grafana:
+  enabled: true
+  adminPassword: admin
+  defaultDashboardsEnabled: false   # Skip the 20+ default dashboards — we load our own
+  defaultDashboardsTimezone: utc
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: platform-sandbox
+          orgId: 1
+          folder: Platform Sandbox
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/platform-sandbox
+  dashboards:
+    platform-sandbox:
+      platform-sandbox-overview:
+        url: ""
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          access: proxy
+          url: http://platform-prometheus:9090
+          isDefault: true
+          editable: false
+          jsonData:
+            timeInterval: "30s"
+        - name: Loki
+          type: loki
+          access: proxy
+          url: http://loki:3100
+          editable: false
+          jsonData:
+            maxLines: 1000
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      folderAnnotation: grafana_folder
+      provider:
+        name: platform-sandbox
+        foldersFromFilesStructure: true
+    datasources:
+      enabled: true
+      label: grafana_datasource
+  persistence:
+    enabled: false
+
+# -----------------------------------------------------------------------------
+# DISABLE heavy components for CI speed
+# -----------------------------------------------------------------------------
+kubeStateMetrics:
+  enabled: true
+kube-state-metrics:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 50m
+      memory: 64Mi
+
+# Node exporter is heavy and not critical for the demo test
+nodeExporter:
+  enabled: false
+prometheus-node-exporter:
+  enabled: false
+
+# No alertmanager needed for CI
+alertmanager:
+  enabled: false
+
+# Minimal rules
+defaultRules:
+  create: false

@@ -151,10 +151,9 @@ jobs:
             --namespace observability --create-namespace \
             --version 56.0.0 \
             --skip-crds \
-            --timeout 20m \
+            --timeout 8m \
             --wait \
-            --wait-for-jobs \
-            --values infrastructure/observability/kube-prometheus-stack-values.yaml
+            --values infrastructure/observability/kube-prometheus-stack-values-ci.yaml
 
       - name: Apply observability plain manifests
         run: |
